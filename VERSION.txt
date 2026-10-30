@@ -1,6 +1,10 @@
 Klangpult – Die Träne des Märtyrers
-Version 2.1.0
+Version 2.2.0
 Stand: 30.10.2026
+
+Neu in Version 2.2:
+- Timer enden mit einem rund fünfsekündigen Fantasy-Glockenklang
+- der bisherige kurze Piepton wurde vollständig ersetzt
 
 Korrekturen in Version 2.1:
 - das zuletzt geöffnete Hauptregister bleibt nach einem Browser-Refresh aktiv

@@ -18,6 +18,19 @@ test("Browser-Bundle speichert das gewählte Hauptregister", async () => {
   assert.match(bundle, /localStorage\.setItem\(`klangpult-workspace`,`audio`\)/);
 });
 
+test("Timerende verwendet einen fünfsekündigen Fantasyklang statt des Pieptons", async () => {
+  const bundle = await readFile(
+    path.join(projectDir, "dist/client/assets/page-DgGL8wLX.js"),
+    "utf8",
+  );
+  assert.match(bundle, /createDelay\(\.7\)/);
+  assert.match(bundle, /146\.83,0,5/);
+  assert.match(bundle, /n\.gain\.exponentialRampToValueAtTime\(1e-4,t\+5\)/);
+  assert.match(bundle, /setTimeout\(\(\)=>void e\.close\(\),5500\)/);
+  assert.doesNotMatch(bundle, /frequency\.setValueAtTime\(740/);
+  assert.match(bundle, /Timer bleiben danach auf dem Server gespeichert/);
+});
+
 test("Echtzeit-Timer mit einer Minute bleibt nach dem ersten Sekundentakt aktiv", async (t) => {
   const temporaryDir = await mkdtemp(path.join(tmpdir(), "klangpult-v21-"));
   const audioDir = path.join(temporaryDir, "audio");

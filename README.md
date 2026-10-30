@@ -10,6 +10,7 @@ Klangpult DnD ist ein lokales, f체r Tablets optimiertes Spielleiter-Dashboard f�
 - Heldenkarten mit Initiative, Lebenspunkten, R체stungsklasse und Attributen
 - bis zu f체nf Echtzeit- oder Rundeneffekte pro Held
 - serverseitig weiterlaufende Echtzeit-Timer
+- f체nfsek체ndiger Fantasy-Glockenklang beim Ablauf eines Timers
 - tempor채re Attributsmodifikatoren und wiederkehrender Schaden oder Heilung
 - W체rfelkonsole f체r W6, W10, W20 und W100
 - Formeln wie `3W6+2`, Vorteil und Nachteil
@@ -98,4 +99,4 @@ Das Dashboard ist f체r die Verwendung im privaten Heimnetz gedacht. Es besitzt k
 
 ## Version
 
-Aktueller Stand: **2.1.0**
+Aktueller Stand: **2.2.0**
