@@ -12,8 +12,10 @@ Klangpult DnD ist ein lokales, für Tablets optimiertes Spielleiter-Dashboard f�
 - serverseitig weiterlaufende Echtzeit-Timer
 - fünfsekündiger Fantasy-Glockenklang beim Ablauf eines Timers
 - temporäre Attributsmodifikatoren und wiederkehrender Schaden oder Heilung
-- Würfelkonsole für W6, W10, W20 und W100
-- Formeln wie `3W6+2`, Vorteil und Nachteil
+- eigene freie Würfelkonsole auf jeder Charakterkarte
+- W4, W6, W8, W10, W12, W20 und W100 mit frei wählbarer Anzahl und Modifikator
+- Formeln wie `3W6+2`, Bezeichnung sowie Vorteil und Nachteil für 1W20
+- dauerhaftes Gesamtprotokoll und gefilterter Verlauf je Charakter
 - eigenes Abenteuerbild und anpassbarer Titel
 - dauerhafte Speicherung außerhalb des Container-Images
 
@@ -72,9 +74,23 @@ Unterstriche in Dateinamen werden in der Oberfläche als Leerzeichen angezeigt. 
 
 JPG-, PNG- und WebP-Dateien im eingebundenen Verzeichnis `/backgrounds` können im Bereich **Helden & Würfel → Abenteuerbild** ausgewählt werden.
 
+## Charakterwürfel und Spielprotokoll
+
+Jeder Charakter besitzt eine eigene Würfelkonsole. Anzahl, Würfelart, Zahlenmodifikator und Bezeichnung können vor jedem Wurf frei gewählt werden. Vorteil und Nachteil stehen für `1W20` zur Verfügung.
+
+Das Gesamtprotokoll dokumentiert dauerhaft:
+
+- Würfelformel, sämtliche Einzelwürfel, Modifikator und Gesamtergebnis
+- Schaden und Heilung mit altem und neuem LP-Stand
+- Start, Pause, Fortsetzung, Verlängerung, Ablauf und Entfernung von Effekten
+- automatische und manuelle Timerereignisse
+- jeden Rundenwechsel
+
+Auf jeder Charakterkarte lässt sich zusätzlich ein gefilterter Verlauf öffnen. Das vollständige Protokoll wird nur über die Schaltfläche **Protokoll löschen** und nach einer zusätzlichen Bestätigung entfernt.
+
 ## Persistente Daten
 
-Der aktuelle Spielstand wird unter `/data/state.json` im eingebundenen Datenverzeichnis gespeichert. Echtzeit-Timer laufen im Container weiter, auch wenn der Browser geschlossen wird.
+Der aktuelle Spielstand einschließlich des vollständigen Protokolls wird unter `/data/state.json` im eingebundenen Datenverzeichnis gespeichert. Echtzeit-Timer laufen im Container weiter, auch wenn der Browser geschlossen wird.
 
 ## Lokaler Start mit Docker Compose
 
@@ -90,7 +106,7 @@ Die Anwendung besteht aus einem schlanken Node.js-Server und einem vorgebauten s
 
 ```bash
 node --check local-server.mjs
-node --test tests/v2.1-regression.test.mjs
+node --test tests/klangpult-v2.3.test.mjs
 ```
 
 ## Sicherheit
@@ -99,4 +115,4 @@ Das Dashboard ist für die Verwendung im privaten Heimnetz gedacht. Es besitzt k
 
 ## Version
 
-Aktueller Stand: **2.2.0**
+Aktueller Stand: **2.3.0**

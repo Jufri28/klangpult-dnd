@@ -30,7 +30,7 @@ jobs:
           node-version: "22"
 
       - name: Regressionstests ausführen
-        run: node --test tests/v2.1-regression.test.mjs
+        run: node --test tests/klangpult-v2.3.test.mjs
 
       - name: Kleingeschriebenen Image-Namen bestimmen
         id: image

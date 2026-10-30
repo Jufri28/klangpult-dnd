@@ -40,11 +40,12 @@ const effectTargets = new Set([
 ]);
 
 const defaultState = () => ({
-  version: 2,
+  version: 3,
   adventure: { title: "Die Träne des Märtyrers", background: "" },
   round: 1,
   heroes: [],
   diceHistory: [],
+  activityLog: [],
   updatedAt: Date.now(),
 });
 
@@ -61,8 +62,6 @@ const sendJson = (response, statusCode, payload) => {
 
 const cleanString = (value, fallback = "", maximum = 500) =>
   typeof value === "string" ? value.trim().slice(0, maximum) : fallback;
-// Zeitstempel liegen als Millisekunden seit 1970 deutlich über 100000.
-// Fachliche Ganzzahlen werden weiterhin durch `integer` separat begrenzt.
 const finite = (value, fallback = 0, minimum = -100000, maximum = Number.MAX_SAFE_INTEGER) => {
   const number = Number(value);
   return Number.isFinite(number) ? Math.max(minimum, Math.min(maximum, number)) : fallback;
@@ -135,6 +134,32 @@ const sanitizeHero = (input, existing = null) => {
   };
 };
 
+const normalizeDiceRoll = (roll) => ({
+  id: cleanString(roll?.id, randomUUID(), 80),
+  heroId: roll?.heroId == null ? null : cleanString(roll.heroId, "", 80) || null,
+  heroName: cleanString(roll?.heroName, "", 80),
+  label: cleanString(roll?.label, "", 80),
+  expression: cleanString(roll?.expression, "1W20", 40),
+  mode: ["advantage", "disadvantage"].includes(roll?.mode) ? roll.mode : "normal",
+  rolls: Array.isArray(roll?.rolls) ? roll.rolls.slice(0, 20).map((value) => integer(value, 1, 1, 100)) : [],
+  keptRoll: roll?.keptRoll == null ? null : integer(roll.keptRoll, 1, 1, 100),
+  modifier: integer(roll?.modifier, 0, -999, 999),
+  total: integer(roll?.total, 0, -99999, 99999),
+  createdAt: finite(roll?.createdAt, Date.now(), 0),
+});
+
+const normalizeActivity = (entry) => ({
+  id: cleanString(entry?.id, randomUUID(), 80),
+  type: ["dice", "hp", "effect", "round"].includes(entry?.type) ? entry.type : "effect",
+  heroId: entry?.heroId == null ? null : cleanString(entry.heroId, "", 80) || null,
+  heroName: cleanString(entry?.heroName, "", 80),
+  title: cleanString(entry?.title, "Ereignis", 120),
+  details: cleanString(entry?.details, "", 500),
+  round: integer(entry?.round, 1, 1, 999999),
+  createdAt: finite(entry?.createdAt, Date.now(), 0),
+  roll: entry?.roll ? normalizeDiceRoll(entry.roll) : null,
+});
+
 const normalizeState = (input) => {
   const state = defaultState();
   if (!input || typeof input !== "object") return state;
@@ -149,10 +174,25 @@ const normalizeState = (input) => {
         return normalized;
       })
     : [];
-  state.diceHistory = Array.isArray(input.diceHistory) ? input.diceHistory.slice(0, 50) : [];
+  state.diceHistory = Array.isArray(input.diceHistory) ? input.diceHistory.slice(0, 50).map(normalizeDiceRoll) : [];
+  state.activityLog = Array.isArray(input.activityLog) ? input.activityLog.map(normalizeActivity) : [];
   state.updatedAt = finite(input.updatedAt, Date.now(), 0);
   return state;
 };
+
+function recordActivity(state, { type, hero = null, title, details = "", roll = null }) {
+  state.activityLog.unshift(normalizeActivity({
+    id: randomUUID(),
+    type,
+    heroId: hero?.id || null,
+    heroName: hero?.name || "",
+    title,
+    details,
+    round: state.round,
+    createdAt: Date.now(),
+    roll,
+  }));
+}
 
 let gameState = defaultState();
 let mutationQueue = Promise.resolve();
@@ -175,6 +215,12 @@ async function loadState() {
       if (effect.endsAt && effect.endsAt <= now) {
         effect.status = "expired";
         effect.expiredAt = now;
+        recordActivity(gameState, {
+          type: "effect",
+          hero,
+          title: `${effect.name} abgelaufen`,
+          details: "Echtzeittimer lief während eines Neustarts ab",
+        });
       } else if (effect.nextTickAt && effect.nextTickAt < now) {
         effect.nextTickAt = now + effect.recurringEverySeconds * 1000;
       }
@@ -209,7 +255,10 @@ function activeModifier(hero, target) {
 
 function adjustHeroHp(hero, delta) {
   const effectiveMaximum = Math.max(1, hero.hpMax + activeModifier(hero, "hpMax"));
-  hero.hpCurrent = Math.max(0, Math.min(effectiveMaximum, hero.hpCurrent + integer(delta, 0, -99999, 99999)));
+  const before = hero.hpCurrent;
+  const requestedDelta = integer(delta, 0, -99999, 99999);
+  hero.hpCurrent = Math.max(0, Math.min(effectiveMaximum, hero.hpCurrent + requestedDelta));
+  return { before, after: hero.hpCurrent, appliedDelta: hero.hpCurrent - before, requestedDelta };
 }
 
 function clampHeroHp(hero) {
@@ -234,7 +283,13 @@ async function processRealtimeEffects() {
         const finalTickTime = effect.endsAt ? Math.min(now, effect.endsAt) : now;
         let safety = 0;
         while (effect.recurringAmount !== 0 && effect.nextTickAt && effect.nextTickAt <= finalTickTime && safety < 100) {
-          adjustHeroHp(hero, effect.recurringAmount);
+          const hpChange = adjustHeroHp(hero, effect.recurringAmount);
+          recordActivity(state, {
+            type: "hp",
+            hero,
+            title: hpChange.appliedDelta < 0 ? "Wiederkehrender Schaden" : "Wiederkehrende Heilung",
+            details: `${effect.name}: ${hpChange.before} → ${hpChange.after} LP (${hpChange.appliedDelta > 0 ? "+" : ""}${hpChange.appliedDelta})`,
+          });
           effect.nextTickAt += effect.recurringEverySeconds * 1000;
           changed = true;
           safety += 1;
@@ -242,6 +297,12 @@ async function processRealtimeEffects() {
         if (effect.endsAt && effect.endsAt <= now) {
           expireEffect(effect, now);
           clampHeroHp(hero);
+          recordActivity(state, {
+            type: "effect",
+            hero,
+            title: `${effect.name} abgelaufen`,
+            details: "Echtzeittimer regulär beendet",
+          });
           changed = true;
         }
       }
@@ -320,7 +381,7 @@ function findHero(state, heroId) {
 }
 
 function parseDice(expression, mode) {
-  const match = /^\s*(\d{0,2})\s*[wd]\s*(6|10|20|100)\s*([+-]\s*\d+)?\s*$/i.exec(String(expression || ""));
+  const match = /^\s*(\d{0,2})\s*[wd]\s*(4|6|8|10|12|20|100)\s*([+-]\s*\d+)?\s*$/i.exec(String(expression || ""));
   if (!match) throw new Error("Würfelformel ungültig – Beispiel: 3W6+2");
   const count = match[1] ? integer(match[1], 1, 1, 20) : 1;
   const sides = integer(match[2], 20);
@@ -346,8 +407,19 @@ async function handleAction(payload) {
       case "updateHero": {
         const index = state.heroes.findIndex((hero) => hero.id === payload.heroId);
         if (index < 0) throw new Error("Held wurde nicht gefunden");
+        const previousHp = state.heroes[index].hpCurrent;
         state.heroes[index] = sanitizeHero(payload.hero, state.heroes[index]);
         clampHeroHp(state.heroes[index]);
+        const hero = state.heroes[index];
+        if (hero.hpCurrent !== previousHp) {
+          const delta = hero.hpCurrent - previousHp;
+          recordActivity(state, {
+            type: "hp",
+            hero,
+            title: delta < 0 ? "Lebenspunkte reduziert" : "Lebenspunkte erhöht",
+            details: `${previousHp} → ${hero.hpCurrent} LP (${delta > 0 ? "+" : ""}${delta})`,
+          });
+        }
         break;
       }
       case "deleteHero": {
@@ -357,7 +429,14 @@ async function handleAction(payload) {
         break;
       }
       case "adjustHp": {
-        adjustHeroHp(findHero(state, payload.heroId), payload.delta);
+        const hero = findHero(state, payload.heroId);
+        const change = adjustHeroHp(hero, payload.delta);
+        recordActivity(state, {
+          type: "hp",
+          hero,
+          title: change.appliedDelta < 0 ? "Schaden" : change.appliedDelta > 0 ? "Heilung" : "LP unverändert",
+          details: `${change.before} → ${change.after} LP (${change.appliedDelta > 0 ? "+" : ""}${change.appliedDelta})`,
+        });
         break;
       }
       case "addEffect": {
@@ -370,7 +449,7 @@ async function handleAction(payload) {
         const remainingRounds = integer(input.rounds, 1, 1, 9999);
         const recurringEverySeconds = integer(input.recurringEverySeconds, 60, 1, 604800);
         const recurringEveryRounds = integer(input.recurringEveryRounds, 1, 1, 999);
-        hero.effects.push(normalizeEffect({
+        const effect = normalizeEffect({
           id: randomUUID(), name: cleanString(input.name, "Unbenannter Effekt", 80), timerMode,
           status: "active", createdAt: now,
           endsAt: timerMode === "realtime" ? now + durationSeconds * 1000 : null,
@@ -383,7 +462,16 @@ async function handleAction(payload) {
           nextTickAt: timerMode === "realtime" && input.recurringAmount ? now + recurringEverySeconds * 1000 : null,
           tickRemainingSeconds: recurringEverySeconds, roundsUntilTick: recurringEveryRounds,
           sound: input.sound !== false, expiredAt: null,
-        }));
+        });
+        hero.effects.push(effect);
+        recordActivity(state, {
+          type: "effect",
+          hero,
+          title: `${effect.name} gestartet`,
+          details: effect.timerMode === "realtime"
+            ? `Echtzeittimer: ${durationSeconds} Sekunden`
+            : `Rundentimer: ${remainingRounds} Runde${remainingRounds === 1 ? "" : "n"}`,
+        });
         break;
       }
       case "updateEffect": {
@@ -393,11 +481,13 @@ async function handleAction(payload) {
         const effect = hero.effects[effectIndex];
         const now = Date.now();
         if (payload.operation === "dismiss") {
+          recordActivity(state, { type: "effect", hero, title: `${effect.name} entfernt`, details: "Abgelaufenen Effekt aus der Heldenkarte entfernt" });
           hero.effects.splice(effectIndex, 1);
           clampHeroHp(hero);
         } else if (payload.operation === "end") {
           expireEffect(effect, now);
           clampHeroHp(hero);
+          recordActivity(state, { type: "effect", hero, title: `${effect.name} vorzeitig beendet`, details: "Timer manuell beendet" });
         } else if (payload.operation === "pause" && effect.status === "active") {
           effect.status = "paused";
           effect.pausedAt = now;
@@ -407,6 +497,7 @@ async function handleAction(payload) {
             effect.endsAt = null;
             effect.nextTickAt = null;
           }
+          recordActivity(state, { type: "effect", hero, title: `${effect.name} pausiert`, details: "Timer angehalten" });
         } else if (payload.operation === "resume" && effect.status === "paused") {
           effect.status = "active";
           if (effect.timerMode === "realtime") {
@@ -414,29 +505,45 @@ async function handleAction(payload) {
             effect.nextTickAt = effect.recurringAmount ? now + Math.max(1, effect.tickRemainingSeconds) * 1000 : null;
           }
           effect.pausedAt = null;
+          recordActivity(state, { type: "effect", hero, title: `${effect.name} fortgesetzt`, details: "Timer wieder gestartet" });
         } else if (payload.operation === "extend" && effect.status !== "expired") {
           const amount = integer(payload.amount, effect.timerMode === "rounds" ? 1 : 60, 1, 604800);
           if (effect.timerMode === "rounds") effect.remainingRounds += amount;
           else if (effect.status === "paused") effect.pausedRemainingSeconds += amount;
           else effect.endsAt = (effect.endsAt || now) + amount * 1000;
+          recordActivity(state, {
+            type: "effect",
+            hero,
+            title: `${effect.name} verlängert`,
+            details: effect.timerMode === "rounds" ? `+${amount} Runde${amount === 1 ? "" : "n"}` : `+${amount} Sekunden`,
+          });
         }
         break;
       }
       case "nextRound": {
+        const previousRound = state.round;
         state.round += 1;
+        recordActivity(state, { type: "round", title: `Runde ${state.round} begonnen`, details: `Rundenwechsel ${previousRound} → ${state.round}` });
         const now = Date.now();
         for (const hero of state.heroes) {
           for (const effect of hero.effects) {
             if (effect.timerMode !== "rounds" || effect.status !== "active") continue;
             effect.roundsUntilTick -= 1;
             if (effect.recurringAmount !== 0 && effect.roundsUntilTick <= 0) {
-              adjustHeroHp(hero, effect.recurringAmount);
+              const change = adjustHeroHp(hero, effect.recurringAmount);
+              recordActivity(state, {
+                type: "hp",
+                hero,
+                title: change.appliedDelta < 0 ? "Wiederkehrender Schaden" : "Wiederkehrende Heilung",
+                details: `${effect.name}: ${change.before} → ${change.after} LP (${change.appliedDelta > 0 ? "+" : ""}${change.appliedDelta})`,
+              });
               effect.roundsUntilTick = effect.recurringEveryRounds;
             }
             effect.remainingRounds -= 1;
             if (effect.remainingRounds <= 0) {
               expireEffect(effect, now);
               clampHeroHp(hero);
+              recordActivity(state, { type: "effect", hero, title: `${effect.name} abgelaufen`, details: `Rundentimer in Runde ${state.round} beendet` });
             }
           }
         }
@@ -445,11 +552,34 @@ async function handleAction(payload) {
       case "rollDice": {
         const mode = ["advantage", "disadvantage"].includes(payload.mode) ? payload.mode : "normal";
         const roll = parseDice(payload.expression, mode);
-        state.diceHistory.unshift({ id: randomUUID(), label: cleanString(payload.label, "", 80), mode, ...roll, createdAt: Date.now() });
+        const hero = payload.heroId ? findHero(state, payload.heroId) : null;
+        const diceRoll = normalizeDiceRoll({
+          id: randomUUID(),
+          heroId: hero?.id || null,
+          heroName: hero?.name || "",
+          label: cleanString(payload.label, "", 80),
+          mode,
+          ...roll,
+          createdAt: Date.now(),
+        });
+        state.diceHistory.unshift(diceRoll);
         state.diceHistory = state.diceHistory.slice(0, 50);
+        const keptText = diceRoll.keptRoll == null ? "" : `; gewertet: ${diceRoll.keptRoll}`;
+        recordActivity(state, {
+          type: "dice",
+          hero,
+          title: diceRoll.label || `${hero?.name || "Meister"}: ${diceRoll.expression}`,
+          details: `${diceRoll.expression} → [${diceRoll.rolls.join(", ")}]${keptText}${diceRoll.modifier ? `; Modifikator ${diceRoll.modifier > 0 ? "+" : ""}${diceRoll.modifier}` : ""}; Ergebnis ${diceRoll.total}`,
+          roll: diceRoll,
+        });
         break;
       }
       case "clearDiceHistory": state.diceHistory = []; break;
+      case "clearActivityLog": {
+        state.activityLog = [];
+        state.diceHistory = [];
+        break;
+      }
       case "setAdventure": {
         const available = await scanBackgrounds();
         const requested = cleanString(payload.adventure?.background, "", 200);
@@ -535,7 +665,7 @@ effectTimer.unref();
 server.listen(port, "0.0.0.0", () => {
   const address = server.address();
   const activePort = typeof address === "object" && address ? address.port : port;
-  console.log(`Klangpult v2.1 läuft auf Port ${activePort}`);
+  console.log(`Klangpult v2.3 läuft auf Port ${activePort}`);
   console.log(`Audioordner: ${audioDir}`);
   console.log(`Datenordner: ${dataDir}`);
 });

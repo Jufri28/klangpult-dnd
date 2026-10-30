@@ -1,6 +1,15 @@
 Klangpult – Die Träne des Märtyrers
-Version 2.2.0
+Version 2.3.0
 Stand: 30.10.2026
+
+Neu in Version 2.3:
+- jeder Charakter besitzt eine eigene freie Würfelkonsole
+- Anzahl, W4/W6/W8/W10/W12/W20/W100, Modifikator und Bezeichnung sind frei wählbar
+- Vorteil und Nachteil sind für 1W20 verfügbar
+- dauerhaftes Gesamtprotokoll sowie gefilterter Verlauf je Charakter
+- dokumentiert werden Würfelformel, Einzelwürfel, Gesamtergebnis, LP-Änderungen, Effekte, Timer und Rundenwechsel
+- Protokoll und Würfelverlauf werden nur nach ausdrücklicher Bestätigung gelöscht
+- neu erzeugte Browserdateien verhindern die Weiterverwendung des alten Pieptons aus dem Cache
 
 Neu in Version 2.2:
 - Timer enden mit einem rund fünfsekündigen Fantasy-Glockenklang
@@ -19,7 +28,8 @@ Enthalten:
 - Heldenkarten mit Initiative, Werten, Zuständen und Notizen
 - fünf Echtzeit- oder Rundeneffekte pro Held
 - serverseitig weiterlaufende Timer und dauerhafte Speicherung
-- Würfelkonsole mit Vorteil, Nachteil und Würfelverlauf
+- Meister- und Charakterwürfel mit Vorteil, Nachteil und Würfelverlauf
+- dauerhaftes Spielprotokoll mit Zeit, Runde, Charakter und vollständigen Würfeldetails
 - auswählbares Abenteuer-Hintergrundbild
 - Docker-/Unraid-Konfiguration
 - zwei austauschbare Test-Audiodateien
