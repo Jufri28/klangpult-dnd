@@ -1,0 +1,17 @@
+{
+  "name": "Klangpult – Die Träne des Märtyrers",
+  "short_name": "Klangpult",
+  "description": "Lokales Audio-Soundboard für die D&D-Spielleitung.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#100d0a",
+  "theme_color": "#171008",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

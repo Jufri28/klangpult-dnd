@@ -1,0 +1,21 @@
+Klangpult – Die Träne des Märtyrers
+Version 2.1.0
+Stand: 30.10.2026
+
+Korrekturen in Version 2.1:
+- das zuletzt geöffnete Hauptregister bleibt nach einem Browser-Refresh aktiv
+- Echtzeit-Timer verwenden vollständige Millisekunden-Zeitstempel
+- eine Minute Timerdauer entspricht zuverlässig 60 Sekunden
+
+Enthalten:
+- iPad-optimiertes Audio-Dashboard
+- automatische Ordnererkennung
+- Hintergrund-Crossfade
+- einzelne Erzähler-/Dialogspur
+- Heldenkarten mit Initiative, Werten, Zuständen und Notizen
+- fünf Echtzeit- oder Rundeneffekte pro Held
+- serverseitig weiterlaufende Timer und dauerhafte Speicherung
+- Würfelkonsole mit Vorteil, Nachteil und Würfelverlauf
+- auswählbares Abenteuer-Hintergrundbild
+- Docker-/Unraid-Konfiguration
+- zwei austauschbare Test-Audiodateien

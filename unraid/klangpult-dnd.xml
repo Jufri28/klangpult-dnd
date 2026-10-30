@@ -1,0 +1,26 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>Klangpult-DnD</Name>
+  <Repository>ghcr.io/jufri28/klangpult-dnd:latest</Repository>
+  <Registry>https://github.com/Jufri28/klangpult-dnd/pkgs/container/klangpult-dnd</Registry>
+  <Network>bridge</Network>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/Jufri28/klangpult-dnd/issues</Support>
+  <Project>https://github.com/Jufri28/klangpult-dnd</Project>
+  <Overview>Lokales DnD-Meisterdashboard mit Klangpult, Heldenverwaltung, Timern und Würfelkonsole.</Overview>
+  <Category>MediaApp:Other</Category>
+  <WebUI>http://[IP]:[PORT:8095]</WebUI>
+  <TemplateURL>https://raw.githubusercontent.com/Jufri28/klangpult-dnd/main/unraid/klangpult-dnd.xml</TemplateURL>
+  <ExtraParams>--read-only --tmpfs /tmp:size=16m --security-opt=no-new-privileges:true --init</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DateInstalled>0</DateInstalled>
+  <DonateText/>
+  <DonateLink/>
+  <Requires/>
+  <Config Name="WebUI" Target="8095" Default="8095" Mode="tcp" Description="Port für das Klangpult im Heimnetz" Type="Port" Display="always" Required="true" Mask="false">8095</Config>
+  <Config Name="Audiodateien" Target="/audio" Default="" Mode="ro" Description="Musik, Erzählertexte und Dialoge" Type="Path" Display="always" Required="true" Mask="false"></Config>
+  <Config Name="Abenteuerbilder" Target="/backgrounds" Default="" Mode="ro" Description="JPG-, PNG- und WebP-Hintergrundbilder" Type="Path" Display="always" Required="true" Mask="false"></Config>
+  <Config Name="Spielstand" Target="/data" Default="" Mode="rw" Description="Persistente Helden-, Timer- und Würfeldaten" Type="Path" Display="always" Required="true" Mask="false"></Config>
+</Container>

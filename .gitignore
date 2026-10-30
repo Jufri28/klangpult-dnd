@@ -1,0 +1,10 @@
+node_modules/
+audio/
+backgrounds/*
+!backgrounds/.gitkeep
+data/*
+!data/.gitkeep
+*.zip
+*.log
+.env*
+.DS_Store

@@ -1,0 +1,32 @@
+services:
+  klangpult:
+    image: ghcr.io/jufri28/klangpult-dnd:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: klangpult-dnd
+    restart: unless-stopped
+    init: true
+    ports:
+      - "${KLANGPULT_PORT:-8095}:8095"
+    volumes:
+      - ./audio:/audio:ro
+      - ./backgrounds:/backgrounds:ro
+      - ./data:/data
+    environment:
+      PORT: 8095
+      AUDIO_DIR: /audio
+      DATA_DIR: /data
+      BACKGROUNDS_DIR: /backgrounds
+      PUBLIC_DIR: /app/public
+    read_only: true
+    tmpfs:
+      - /tmp:size=16m
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:8095/api/health').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s

@@ -1,0 +1,12 @@
+.git
+.github
+audio
+backgrounds
+data
+tests
+scripts
+unraid
+*.zip
+*.log
+README.md
+VERSION.txt
